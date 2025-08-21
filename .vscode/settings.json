@@ -1,0 +1,7 @@
+{
+    "python.defaultInterpreterPath": "~/.venvs/docsEnv/bin/python",
+    "terminal.integrated.env.linux": {
+        "VIRTUAL_ENV": "~/.venvs/docsEnv/",
+        "PATH": "~/.venvs/docsEnv/bin:${env:PATH}"
+    }
+}

@@ -1,0 +1,219 @@
+((* macro colorizeSpanToLatex(md) -*))
+    ((* if '<span' in md and 'style' in md and 'color:' in md and '</span>' in md -*))
+        ((* set preSpan = md.split('<span', 1)[0] -*))
+        ((* set spanAndAfter = md.split('<span', 1)[1] -*))
+        ((* set afterSpan = spanAndAfter.split('</span>', 1)[1] -*))
+        ((* set attrs = spanAndAfter.split('>', 1)[0].lower() -*))
+        ((* set innerMd = spanAndAfter.split('>', 1)[1].split('</span>', 1)[0] -*))
+        ((* set rawColor = attrs.split('color:', 1)[1].split(';', 1)[0] -*))
+        ((* set colorSpec = rawColor.strip().strip("'").strip('"').lstrip('#') -*))
+
+        ((* set preLatex = preSpan | markdown2latex -*))
+        ((* set innerLatex = innerMd | markdown2latex -*))
+
+        ((* if colorSpec and (colorSpec | length == 6 or colorSpec | length == 8) -*))
+            ((*- set finalHex = colorSpec[:6] -*))
+            ((*- set colorCmd = "\\textcolor[HTML]{" ~ finalHex ~ "}{" ~ innerLatex ~ "}" -*))
+        ((* else -*))
+            ((*- set colorCmd = "\\textcolor{" ~ colorSpec ~ "}{" ~ innerLatex ~ "}" -*))
+        ((* endif -*))
+
+        ((( preLatex )))
+        ((( colorCmd )))
+        ((( colorizeSpanToLatex(afterSpan) )))
+    ((* else -*))
+        ((( md | markdown2latex )))
+    ((* endif -*))
+((* endmacro -*))
+
+((* macro renderFigures(md, idx=1) -*))
+    ((* if '<figure' in md and '</figure>' in md -*))
+        ((* set pre = md.split('<figure', 1)[0] -*))
+        ((* set figAndAfter = md.split('<figure', 1)[1] -*))
+        ((* set hasClose = ('</figure>' in figAndAfter) -*))
+        ((* if not hasClose -*))
+            ((( md | markdown2latex )))
+        ((* else -*))
+            ((* set innerFig = figAndAfter.split('</figure>', 1)[0] -*))
+            ((* set after = figAndAfter.split('</figure>', 1)[1] -*))
+
+            % Extract <img ...> tag
+            ((* if '<img' in innerFig -*))
+                ((* set imgTag = innerFig.split('<img', 1)[1].split('>', 1)[0] ~ '>' -*))
+                % src
+                ((* set src = "" -*))
+                ((* if 'src="' in imgTag -*))
+                    ((* set src = imgTag.split('src="', 1)[1].split('"', 1)[0] -*))
+                ((* elif "src='" in imgTag -*))
+                    ((* set src = imgTag.split("src='", 1)[1].split("'", 1)[0] -*))
+                ((* endif -*))
+
+                % width from width= or style="width: ..."
+                ((* set wraw = "" -*))
+                ((* if 'width="' in imgTag -*))
+                    ((* set wraw = imgTag.split('width="', 1)[1].split('"', 1)[0] -*))
+                ((* elif "width='" in imgTag -*))
+                    ((* set wraw = imgTag.split("width='", 1)[1].split("'", 1)[0] -*))
+                ((* elif "width=" in imgTag -*))
+                    ((* set wraw = imgTag.split("width=", 1)[1].split()[0] -*))
+                ((* elif 'style="' in imgTag and 'width:' in imgTag -*))
+                    ((* set styleChunk = imgTag.split('style="', 1)[1].split('"', 1)[0] -*))
+                    ((* set wraw = styleChunk.split('width:', 1)[1].split(';', 1)[0].strip() if 'width:' in styleChunk else "" -*))
+                ((* endif -*))
+                ((* set wclean = wraw.replace("px","").replace(";","").replace(">","").replace("/","").strip() -*))
+                ((* set widthLatex = (wclean ~ "bp") if wclean else "\\linewidth" -*))
+
+                % base name for label
+                ((* set base = (src.rsplit("/", 1)[-1]).rsplit(".", 1)[0] if src else "img" -*))
+
+                % caption
+                ((* set caption = "" -*))
+                ((* if "<figcaption>" in innerFig -*))
+                    ((* set caption = innerFig.split("<figcaption>", 1)[1].split("</figcaption>", 1)[0].strip() -*))
+                ((* endif -*))
+
+                % Render pre text
+                ((( pre | markdown2latex )))
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=((( widthLatex )))]{((( src )))}
+    ((* if caption -*))\caption{((( caption )))}((* endif -*))
+    \label{fig:((( base )))_((( "%02d"|format(idx) )))}
+\end{figure}
+
+                % Recurse on the rest (idx increments for unique labels)
+                ((( renderFigures(after, idx + 1) )))
+            ((* else -*))
+                % No <img> inside this figure. Treat whole chunk as text.
+                ((( (pre ~ '<figure' ~ innerFig ~ '</figure>' ~ after) | markdown2latex )))
+            ((* endif -*))
+        ((* endif -*))
+    ((* else -*))
+        % No figure found. Just convert to LaTeX.
+        ((( md | markdown2latex )))
+    ((* endif -*))
+((* endmacro -*))
+
+((* macro renderBareImg(s) -*))
+    ((* set after = s.split("<img", 1)[1] -*))
+    ((* set tag = "<img" ~ after.split(">", 1)[0] ~ ">" -*))
+    ((* set src = "" -*))
+    ((* if 'src="' in tag -*))
+        ((* set src = tag.split('src="', 1)[1].split('"', 1)[0] -*))
+    ((* elif "src='" in tag -*))
+        ((* set src = tag.split("src='", 1)[1].split("'", 1)[0] -*))
+    ((* endif -*))
+
+    ((* set alt = "" -*))
+    ((* if 'alt="' in tag -*))
+        ((* set alt = tag.split('alt="', 1)[1].split('"', 1)[0] -*))
+    ((* elif "alt='" in tag -*))
+        ((* set alt = tag.split("alt='", 1)[1].split("'", 1)[0] -*))
+    ((* endif -*))
+
+    ((* set wraw = "" -*))
+    ((* if 'width="' in tag -*))
+        ((* set wraw = tag.split('width="', 1)[1].split('"', 1)[0] -*))
+    ((* elif "width='" in tag -*))
+        ((* set wraw = tag.split("width='", 1)[1].split("'", 1)[0] -*))
+    ((* elif "width=" in tag -*))
+        ((* set wraw = tag.split("width=", 1)[1].split()[0] -*))
+    ((* endif -*))
+    ((* set wclean = wraw.replace("px","").replace(";","").replace(">","").replace("/","").strip() -*))
+    ((* set widthLatex = (wclean ~ "bp") if wclean else "\\linewidth" -*))
+    ((* set base = (src.rsplit("/", 1)[-1]).rsplit(".", 1)[0] -*))
+
+    ((* if src -*))
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=((( widthLatex )))]{((( src )))}
+    ((* if alt -*))\caption{((( alt )))}((* endif -*))
+    \label{fig:((( base )))} 
+\end{figure}
+    ((* else -*))
+((( super() )))
+    ((* endif -*))
+((* endmacro -*))
+
+((* macro renderMarkdownImage(s) -*))
+    ((* set alt = s[2:].split("]", 1)[0] -*))
+    ((* set inside = s.split("](", 1)[1][:-1] -*))
+    ((* set parts = inside.split(" ", 1) -*))
+    ((* set path = parts[0] -*))
+    ((* set title = (parts[1].strip('"').strip("'")) if parts|length > 1 else alt -*))
+    ((* set base = (path.rsplit("/", 1)[-1]).rsplit(".", 1)[0] -*))
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{((( path )))}
+    \caption{((( title if title else alt )))}
+    \label{fig:((( base )))} 
+\end{figure}
+((* endmacro -*))
+
+
+% Detects a standard Markdown pipe table: header line, separator line with dashes/colons, then body lines
+((* macro hasPipeTable(s) -*))
+    ((*- set lines = (s or '').split('\n') -*))
+    ((*- set found = false -*))
+    ((*- for i in range((lines|length) - 1) -*))
+        ((*- set line = lines[i] | trim -*))
+        ((*- set nextLine = lines[i+1] | trim -*))
+        % header must start with | and have at least two cells
+        ((*- if line.startswith('|') and ('|' in line[1:]) -*))
+            % separator: starts with | and contains only dashes, colons, pipes, and spaces
+            ((*- set sepOk = nextLine.startswith('|') and (nextLine|replace(' ', '') | replace(':','') | replace('|','') | replace('-','') == '') -*))
+            ((*- if sepOk -*))
+                ((*- set found = true -*))
+                ((*- break -*))
+            ((*- endif -*))
+        ((*- endif -*))
+    ((*- endfor -*))
+    ((- found -))
+((*- endmacro *))
+
+% Detects first pipe table, then renders pre, table, and post via markdown2latex
+((* macro renderPipeTable(s) -*))
+    ((*- set txt = s or '' -*))
+    ((*- set lines = txt.split('\n') -*))
+    ((*- set start = -1 -*))
+    ((*- set end = -1 -*))
+
+    ((*- for i in range((lines|length) - 1) -*))
+        ((*- set line = lines[i] | trim -*))
+        ((*- set nextLine = lines[i+1] | trim -*))
+        ((*- if line.startswith('|') and ('|' in line[1:]) -*))
+            ((*- set sepClean = nextLine|replace(' ', '') | replace(':','') | replace('|','') | replace('-','') -*))
+            ((*- if nextLine.startswith('|') and sepClean == '' -*))
+                ((*- set start = i -*))
+                ((*- break -*))
+            ((*- endif -*))
+        ((*- endif -*))
+    ((*- endfor -*))
+
+    ((*- if start == -1 -*))
+        ((( txt | markdown2latex )))
+    ((*- else -*))
+        % extend to include all table rows
+        ((*- for j in range(start + 2, lines|length) -*))
+            ((*- set l = lines[j] | trim -*))
+            ((*- if l.startswith('|') and ('|' in l[1:]) -*))
+                % still inside table
+            ((*- else -*))
+                ((*- set end = j -*))
+                ((*- break -*))
+            ((*- endif -*))
+        ((*- endfor -*))
+        ((*- if end == -1 -*))((*- set end = lines|length -*))((*- endif -*))
+
+        % slice parts
+        ((*- set pre = lines[:start] | join('\n') -*))
+        ((*- set tableBlock = lines[start:end] | join('\n') -*))
+        ((*- set post = lines[end:] | join('\n') -*))
+
+        % render each part with default markdown2latex
+        ((( pre | markdown2latex )))
+        ((( tableBlock | markdown2latex )))
+        ((( post | markdown2latex )))
+    ((*- endif -*))
+((*- endmacro *))

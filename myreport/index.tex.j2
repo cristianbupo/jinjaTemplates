@@ -1,3 +1,4 @@
+((* import "macros.tex.j2" as m with context -*))
 ((*- extends 'latex/index.tex.j2' -*))
 
 ((* block packages -*))
@@ -12,6 +13,23 @@
 \usepackage[left]{lineno}
 ((* endblock packages -*))
 
+((* block docclass *))\documentclass[11pt]{journal}((* endblock docclass *))
+((* block margins *))\geometry{margin=1cm}((* endblock margins *))
+((* block maketitle *))((* endblock maketitle *))
+
+((* block definitions *))
+    ((( super() )))
+        % Expose relative time if a datetime is provided in context
+    ((* if generated_at is defined *))
+        \newcommand{\GeneratedAgo}{((( generated_at | timesince )))}
+    ((* endif *))
+((* endblock definitions *))
+
+((* block predoc *))
+    \linenumbers
+    ((( super() )))
+((* endblock predoc *))
+
 ((* block codecell -*))
 ((* if cell.metadata.get('vscode', {}).get('languageId') == 'latex' -*))
     ((( cell.source )))
@@ -25,166 +43,24 @@
 
 % --- HTML <figure> with <figcaption> ---
 ((* if "<figure" in s -*))
-    ((* set after = s.split("<figure", 1)[1] -*))
-    ((* set innerFig = after.split("</figure>", 1)[0] -*))
-    ((* set imgTag = innerFig.split("<img", 1)[1].split(">", 1)[0] ~ ">" -*))
-    ((* set src = "" -*))
-    ((* if 'src="' in imgTag -*))
-        ((* set src = imgTag.split('src="', 1)[1].split('"', 1)[0] -*))
-    ((* elif "src='" in imgTag -*))
-        ((* set src = imgTag.split("src='", 1)[1].split("'", 1)[0] -*))
-    ((* endif -*))
-    ((* set wraw = "" -*))
-    ((* if 'width="' in imgTag -*))
-        ((* set wraw = imgTag.split('width="', 1)[1].split('"', 1)[0] -*))
-    ((* elif "width='" in imgTag -*))
-        ((* set wraw = imgTag.split("width='", 1)[1].split("'", 1)[0] -*))
-    ((* elif "width=" in imgTag -*))
-        ((* set wraw = imgTag.split("width=", 1)[1].split()[0] -*))
-    ((* endif -*))
-    ((* set wclean = wraw.replace("px","").replace(";","").replace(">","").replace("/","").strip() -*))
-    ((* set widthLatex = (wclean ~ "bp") if wclean else "\\linewidth" -*))
-    ((* set base = (src.rsplit("/", 1)[-1]).rsplit(".", 1)[0] -*))
-    ((* set caption = "" -*))
-    ((* if "<figcaption>" in innerFig -*))
-        ((* set caption = innerFig.split("<figcaption>", 1)[1].split("</figcaption>", 1)[0].strip() -*))
-    ((* endif -*))
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=((( widthLatex )))]{((( src )))}
-    ((* if caption -*))\caption{((( caption )))}((* endif -*))
-    \label{fig:((( base )))} 
-\end{figure}
+    ((( m.renderFigures(s) )))
 
 % --- Raw HTML <img> tag ---
 ((* elif "<img" in s -*))
-    ((* set after = s.split("<img", 1)[1] -*))
-    ((* set tag = "<img" ~ after.split(">", 1)[0] ~ ">" -*))
-    ((* set src = "" -*))
-    ((* if 'src="' in tag -*))
-        ((* set src = tag.split('src="', 1)[1].split('"', 1)[0] -*))
-    ((* elif "src='" in tag -*))
-        ((* set src = tag.split("src='", 1)[1].split("'", 1)[0] -*))
-    ((* endif -*))
-    ((* set alt = "" -*))
-    ((* if 'alt="' in tag -*))
-        ((* set alt = tag.split('alt="', 1)[1].split('"', 1)[0] -*))
-    ((* elif "alt='" in tag -*))
-        ((* set alt = tag.split("alt='", 1)[1].split("'", 1)[0] -*))
-    ((* endif -*))
-    ((* set wraw = "" -*))
-    ((* if 'width="' in tag -*))
-        ((* set wraw = tag.split('width="', 1)[1].split('"', 1)[0] -*))
-    ((* elif "width='" in tag -*))
-        ((* set wraw = tag.split("width='", 1)[1].split("'", 1)[0] -*))
-    ((* elif "width=" in tag -*))
-        ((* set wraw = tag.split("width=", 1)[1].split()[0] -*))
-    ((* endif -*))
-    ((* set wclean = wraw.replace("px","").replace(";","").replace(">","").replace("/","").strip() -*))
-    ((* set widthLatex = (wclean ~ "bp") if wclean else "\\linewidth" -*))
-    ((* set base = (src.rsplit("/", 1)[-1]).rsplit(".", 1)[0] -*))
-    ((* if src -*))
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=((( widthLatex )))]{((( src )))}
-    ((* if alt -*))\caption{((( alt )))}((* endif -*))
-    \label{fig:((( base )))} 
-\end{figure}
-    ((* else -*))
-((( super() )))
-    ((* endif -*))
+    ((( m.renderBareImg(s) )))
 
 % --- Markdown image ![alt](src) ---
 ((* elif s.startswith("![") and "](" in s and s.endswith(")") -*))
-    ((* set alt = s[2:].split("]", 1)[0] -*))
-    ((* set inside = s.split("](", 1)[1][:-1] -*))
-    ((* set parts = inside.split(" ", 1) -*))
-    ((* set path = parts[0] -*))
-    ((* set title = (parts[1].strip('"').strip("'")) if parts|length > 1 else alt -*))
-    ((* set base = (path.rsplit("/", 1)[-1]).rsplit(".", 1)[0] -*))
+    ((( m.renderMarkdownImage(s) )))
 
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\linewidth]{((( path )))}
-    \caption{((( title )))}
-    \label{fig:((( base )))} 
-\end{figure}
+% Handle HTML <span style="color:...">
+((* elif '<span' in s and 'style' in s and 'color:' in s and '</span>' in s -*))
+    ((( m.colorizeSpanToLatex(s) )))
 
 % --- Default markdown rendering ---
 ((* else -*))
-    % Handle HTML <span style="color:...">
-    ((* if '<span' in s and 'style' in s and 'color:' in s and '</span>' in s -*))
-        ((* set pre_span_content = s.split('<span', 1)[0] -*))
-        ((* set span_and_after = s.split('<span', 1)[1] -*))
-        ((* set after_span_content = span_and_after.split('</span>', 1)[1] -*))
-        ((* set span_attributes = span_and_after.split('>', 1)[0].lower() -*))
-        ((* set inner_markdown = span_and_after.split('>', 1)[1].split('</span>', 1)[0] -*))
-        ((* set raw_color = span_attributes.split('color:', 1)[1].split(';', 1)[0] -*))
-        ((* set color_spec = raw_color.strip().strip("'").strip('"').lstrip('#') -*))
-        ((* set pre_latex = pre_span_content | markdown2latex -*))
-        ((* set inner_latex = inner_markdown | markdown2latex -*))
-        ((* set after_latex = after_span_content | markdown2latex -*))
-        ((* if color_spec and (color_spec | length == 6 or color_spec | length == 8) -*))
-            ((*- set final_hex = color_spec[:6] -*))
-            ((*- set color_command = "\\textcolor[HTML]{" ~ final_hex ~ "}{" ~ inner_latex ~ "}" -*))
-        ((* else -*))
-            ((*- set color_command = "\\textcolor{" ~ color_spec ~ "}{" ~ inner_latex ~ "}" -*))
-        ((* endif -*))
-((( pre_latex ~ color_command ~ after_latex )))
-    ((* else -*))
-        ((* set rendered = (s | markdown2latex) -*))
-        % Handle tables, wrapping them in a float environment
-        ((* if "\\begin{longtable" in rendered -*))
-            % Check for a caption, which indicates we need to separate pre-table text.
-            ((* if "<caption" in s -*))
-                % --- START: FIX ---
-                % 1. Extract the caption text.
-                ((* set capAfter = s.split("<caption", 1)[1] -*))
-                ((* set capInner = capAfter.split(">", 1)[1] if ">" in capAfter else "" -*))
-                ((* set caption = capInner.split("</caption>", 1)[0].strip() -*))
+    ((( s | markdown2latex )))
 
-                % 2. Split markdown into pre-table content and the table itself using the caption as a marker.
-                ((* set pre_table_md = s.split('<caption', 1)[0] -*))
-                ((* set table_md = '<caption' + s.split('<caption', 1)[1] -*))
-
-                % 3. Convert the two parts to LaTeX independently.
-                ((* set pre_table_latex = pre_table_md | markdown2latex -*))
-                ((* set table_latex = table_md | markdown2latex -*))
-                
-                % 4. Print the pre-table text first.
-                ((( pre_table_latex )))
-
-                % 5. Then, create the table environment with the caption and the table content.
-\begin{table}[H]
-                \caption{((( caption )))}\label{tab:auto}
-                ((( table_latex | replace(caption, '', 1) )))
-\end{table}
-                % --- END: FIX ---
-            ((* else -*))
-                % This is a table WITHOUT a caption. Wrap the whole rendered block.
-\begin{table}[H]
-                ((( rendered )))
-\end{table}
-            ((* endif -*))
-        ((* else -*))
-            % This is not a table. Just render the markdown.
-            ((( rendered )))
-        ((* endif -*))
-    ((* endif -*))
 ((* endif -*))
 ((* endblock markdowncell -*))
 
-((* block docclass *))\documentclass[11pt]{journal}((* endblock docclass *))
-((* block margins *))\geometry{margin=1cm}((* endblock margins *))
-((* block maketitle *))((* endblock maketitle *))
-
-((* block definitions *))
-    ((( super() )))
-((* endblock definitions *))
-
-((* block predoc *))
-    \linenumbers
-    ((( super() )))
-((* endblock predoc *))
