@@ -45,6 +45,10 @@
 ((* if "<figure" in s -*))
     ((( m.renderFigures(s) )))
 
+% --- Caption + Markdown pipe-table in one cell ---
+((* elif "<caption" in s and "|" in s -*))
+    ((( m.renderCaptionPipeTable(s) )))
+
 % --- Raw HTML <img> tag ---
 ((* elif "<img" in s -*))
     ((( m.renderBareImg(s) )))
@@ -63,4 +67,3 @@
 
 ((* endif -*))
 ((* endblock markdowncell -*))
-

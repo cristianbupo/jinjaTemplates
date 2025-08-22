@@ -217,3 +217,46 @@
         ((( post | markdown2latex )))
     ((*- endif -*))
 ((*- endmacro *))
+
+
+((* macro renderCaptionPipeTable(s) -*))
+((* set afterCap = s.split('<caption', 1)[1] if '<caption' in s else '' -*))
+((* set capInner = afterCap.split('>', 1)[1].split('</caption>', 1)[0] if afterCap else '' -*))
+((* set afterCaption = afterCap.split('</caption>', 1)[1] if afterCap else s -*))
+
+((* set lines = afterCaption.splitlines() -*))
+((* set started = False -*))
+((* set tblLines = [] -*))
+((* for ln in lines -*))
+  ((* if (not started) and ln.strip().startswith('|') -*))
+    ((* set _ = tblLines.append(ln) -*))
+    ((* set started = True -*))
+  ((* elif started and ln.strip().startswith('|') -*))
+    ((* set _ = tblLines.append(ln) -*))
+  ((* elif started -*))
+    ((* break *))
+  ((* endif -*))
+((* endfor -*))
+
+((* set tableMd = tblLines | join('\n') -*))
+((* set tableLatex = tableMd | markdown2latex -*))
+
+((* if '\begin{longtable}' in tableLatex -*))
+  ((* set parts = tableLatex.split('\begin{longtable}', 1) -*))
+  ((* set pre = parts[0] -*))
+  ((* set post = parts[1] -*))
+  ((* set cols = post.split('}', 1)[0] ~ '}' -*))
+  ((* set rest = post.split('}', 1)[1] -*))
+((( pre )))
+\begin{longtable((( cols )))
+\caption{ ((( capInner | striptags | trim ))) }\\
+((( rest )))
+((* else -*))
+\begin{table}[H]
+\caption{ ((( capInner | striptags | trim ))) }
+\centering
+((( tableLatex )))
+\end{table}
+((* endif -*))
+((* endmacro *))
+
