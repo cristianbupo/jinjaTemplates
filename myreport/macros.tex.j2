@@ -13,9 +13,9 @@
 
         ((* if colorSpec and (colorSpec | length == 6 or colorSpec | length == 8) -*))
             ((*- set finalHex = colorSpec[:6] -*))
-            ((*- set colorCmd = "\\textcolor[HTML]{" ~ finalHex ~ "}{" ~ innerLatex ~ "}" -*))
+            ((*- set colorCmd = "\\begingroup\\color[HTML]{" ~ finalHex ~ "}{" ~ innerLatex ~ "} \\endgroup" -*))
         ((* else -*))
-            ((*- set colorCmd = "\\textcolor{" ~ colorSpec ~ "}{" ~ innerLatex ~ "}" -*))
+            ((*- set colorCmd = "\\begingroup\\color{" ~ colorSpec ~ "}{" ~ innerLatex ~ "} \\endgroup" -*))
         ((* endif -*))
 
         ((( preLatex )))

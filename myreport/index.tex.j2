@@ -21,6 +21,7 @@
 
 ((* block definitions *))
     ((( super() )))
+        \newenvironment{scopedcolor}[2][]{\begingroup\color[#1]{#2}}{\endgroup}
         % Expose relative time if a datetime is provided in context
     ((* if generated_at is defined *))
         \newcommand{\GeneratedAgo}{((( generated_at | timesince )))}
